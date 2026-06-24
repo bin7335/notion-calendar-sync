@@ -1,0 +1,13 @@
+{
+  "name": "notion-calendar-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Notion '해야할일' DB를 ICS로 변환해 구글 캘린더가 구독할 수 있게 한다",
+  "scripts": {
+    "generate": "node scripts/generate-ics.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

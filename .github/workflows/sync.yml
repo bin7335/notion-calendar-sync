@@ -1,0 +1,34 @@
+name: Sync Notion calendar to ICS
+
+on:
+  schedule:
+    - cron: "0 * * * *" # 매시간 정각 (UTC 기준)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate ICS
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          ICS_FILENAME: ${{ secrets.ICS_FILENAME }}
+        run: node scripts/generate-ics.js
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "notion-calendar-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/
+          git diff --cached --quiet || git commit -m "sync: update calendar.ics"
+          git push
