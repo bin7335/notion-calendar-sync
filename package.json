@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Notion '해야할일' DB를 ICS로 변환해 구글 캘린더가 구독할 수 있게 한다",
   "scripts": {
-    "generate": "node scripts/generate-ics.js"
+    "generate": "node scripts/generate-ics.js",
+    "briefing": "node scripts/send-kakao-briefing.js"
   },
   "engines": {
     "node": ">=18"

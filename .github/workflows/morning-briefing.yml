@@ -1,0 +1,38 @@
+name: Send morning schedule briefing
+
+on:
+  schedule:
+    - cron: "30 22 * * *" # 07:30 Asia/Seoul
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Send Kakao briefing
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          KAKAO_ACCESS_TOKEN: ${{ secrets.KAKAO_ACCESS_TOKEN }}
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          BRIEFING_LINK_URL: ${{ vars.BRIEFING_LINK_URL }}
+        run: node scripts/send-kakao-briefing.js
+
+      - name: Commit briefing snapshot if changed
+        run: |
+          git config user.name "notion-calendar-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/
+          git diff --cached --quiet || git commit -m "briefing: update morning schedule"
+          git push

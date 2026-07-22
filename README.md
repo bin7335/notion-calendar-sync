@@ -61,3 +61,34 @@ https://<username>.github.io/notion-calendar-sync/calendar-f8339e145013756e.ics
 - 완료/보류/안함이 체크된 항목은 제외
 - 제목(Task To Do)·날짜(날짜 속성)·장소만 ICS 이벤트로 변환해 `docs/<ICS_FILENAME>`에 저장
 - 변경이 있으면 자동 커밋·푸시 → GitHub Pages가 자동 갱신
+
+## 8. 매일 아침 카카오톡 일정 브리핑
+
+`.github/workflows/morning-briefing.yml`이 매일 07:30(KST)에 실행되어 Notion "해야할일" DB의 앞으로 7일 일정을 짧게 요약하고, 카카오톡 "나에게 보내기"로 전송한다.
+
+GitHub Actions는 로컬 Orca MCP를 직접 호출할 수 없으므로, 카카오 전송은 Kakao Developers REST API를 사용한다. 카카오 공식 문서 기준으로 "나에게 기본 템플릿으로 메시지 발송"은 `POST https://kapi.kakao.com/v2/api/talk/memo/default/send`를 액세스 토큰으로 호출한다. 텍스트 템플릿은 최대 200자이므로 브리핑도 짧게 보낸다.
+
+추가 GitHub Secrets:
+
+| 이름 | 값 |
+|---|---|
+| `KAKAO_ACCESS_TOKEN` | 선택. 수동으로 발급한 액세스 토큰. 만료가 짧아 장기 운영에는 비추천 |
+| `KAKAO_REST_API_KEY` | 권장. Kakao Developers 앱의 REST API 키 |
+| `KAKAO_REFRESH_TOKEN` | 권장. `talk_message` 권한에 동의해 발급받은 사용자 refresh token |
+| `KAKAO_CLIENT_SECRET` | 선택. 앱에서 Client Secret을 활성화한 경우 필요 |
+
+운영은 `KAKAO_REST_API_KEY` + `KAKAO_REFRESH_TOKEN` 조합을 권장한다. 워크플로우가 실행될 때마다 refresh token으로 access token을 갱신한 뒤 메시지를 보낸다. 카카오가 새 refresh token을 반환하는 경우 GitHub Actions 로그에 경고가 남으므로, 그때 `KAKAO_REFRESH_TOKEN` secret을 새 값으로 교체해야 한다.
+
+선택 GitHub Variables:
+
+| 이름 | 값 |
+|---|---|
+| `BRIEFING_LINK_URL` | 카카오 메시지 버튼이 열 URL. 기본값은 현재 ICS 공개 URL |
+
+수동 테스트:
+
+```bash
+npm run briefing
+```
+
+GitHub에서는 Actions 탭 → "Send morning schedule briefing" → "Run workflow"로 수동 실행해 카카오톡 수신 여부를 확인한다.
