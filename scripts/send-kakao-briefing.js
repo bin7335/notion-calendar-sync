@@ -45,16 +45,29 @@ function addDays(isoDate, days) {
 }
 
 function formatMd(isoDate) {
-  const [, month, day] = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/) || [];
+  const [, , month, day] = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/) || [];
   return `${month}/${day}`;
 }
 
+function formatDay(isoDate) {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  const weekday = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: TZ,
+    weekday: "short",
+  }).format(date);
+  return `${formatMd(isoDate)}(${weekday})`;
+}
+
 function shortDateRange(item) {
-  const start = formatMd(item.startDate);
+  const start = formatDay(item.startDate);
   if (item.endDate && item.endDate !== item.startDate) {
-    return `${start}~${formatMd(item.endDate)}`;
+    return `${start}~${formatDay(item.endDate)}`;
   }
   return start;
+}
+
+function compactTitle(title, maxLength = 24) {
+  return truncate(title.replace(/\s+/g, " ").trim(), maxLength);
 }
 
 function getTitle(prop) {
@@ -152,33 +165,46 @@ function truncate(text, maxLength) {
 function buildBriefing(items, startDate, endDate) {
   const todayItems = items.filter((item) => item.startDate <= startDate && item.endDate >= startDate);
   const upcomingItems = items.filter((item) => !(item.startDate <= startDate && item.endDate >= startDate));
-
-  const todayText = todayItems.length ? todayItems.map((item) => item.title).join(", ") : "없음";
-  const upcomingText = upcomingItems.length
-    ? upcomingItems
-        .slice(0, 4)
-        .map((item) => `${shortDateRange(item)} ${item.title}`)
-        .join(", ")
-    : "없음";
-
   const missingLocation = items.filter(
     (item) => !item.location && /출장|검진|회의|연수|심사/.test(item.title)
   );
 
-  let text = `[7일 일정] ${formatMd(startDate)}~${formatMd(endDate)}\n`;
-  text += `오늘 ${todayItems.length}건: ${todayText}\n`;
-  text += `다가옴 ${upcomingItems.length}건: ${upcomingText}`;
-  if (missingLocation.length) text += `\n확인: 장소 미입력 ${missingLocation.length}건`;
+  const lines = [`[7일 일정] ${formatDay(startDate)}-${formatDay(endDate)}`];
 
-  return truncate(text, 200);
+  if (todayItems.length) {
+    lines.push(`오늘 ${todayItems.length}건`);
+    lines.push(...todayItems.slice(0, 2).map((item) => `- ${compactTitle(item.title, 28)}`));
+  } else {
+    lines.push("오늘 일정 없음");
+  }
+
+  if (upcomingItems.length) {
+    lines.push(`예정 ${upcomingItems.length}건`);
+    lines.push(
+      ...upcomingItems
+        .slice(0, 3)
+        .map((item) => `- ${shortDateRange(item)} ${compactTitle(item.title, 20)}`)
+    );
+  }
+
+  if (missingLocation.length) lines.push(`확인: 장소 미입력 ${missingLocation.length}건`);
+
+  return truncate(lines.join("\n"), 200);
 }
 
 function buildMarkdown(items, startDate, endDate, text) {
+  const todayItems = items.filter((item) => item.startDate <= startDate && item.endDate >= startDate);
+  const upcomingItems = items.filter((item) => !(item.startDate <= startDate && item.endDate >= startDate));
+  const missingLocation = items.filter(
+    (item) => !item.location && /출장|검진|회의|연수|심사/.test(item.title)
+  );
   const lines = [
-    `# ${startDate} 아침 일정 브리핑`,
+    `# ${formatDay(startDate)} 아침 일정 브리핑`,
     "",
-    `- 범위: ${startDate} ~ ${endDate}`,
+    `- 범위: ${formatDay(startDate)} ~ ${formatDay(endDate)}`,
     `- 총 ${items.length}건`,
+    `- 오늘 ${todayItems.length}건 / 예정 ${upcomingItems.length}건`,
+    `- 확인 필요 ${missingLocation.length}건`,
     "",
     "## 카카오톡 전송문",
     "",
@@ -186,16 +212,38 @@ function buildMarkdown(items, startDate, endDate, text) {
     text,
     "```",
     "",
-    "## 원본 요약",
+    "## 오늘",
     "",
   ];
 
-  if (!items.length) {
-    lines.push("- 다가오는 일정 없음");
+  if (!todayItems.length) {
+    lines.push("- 오늘 일정 없음");
   } else {
-    for (const item of items) {
+    for (const item of todayItems) {
       const where = item.location ? ` — ${item.location}` : "";
       lines.push(`- ${shortDateRange(item)} ${item.title}${where}`);
+    }
+  }
+
+  lines.push("");
+  lines.push("## 예정");
+  lines.push("");
+
+  if (!upcomingItems.length) {
+    lines.push("- 예정 일정 없음");
+  } else {
+    for (const item of upcomingItems) {
+      const where = item.location ? ` — ${item.location}` : "";
+      lines.push(`- ${shortDateRange(item)} ${item.title}${where}`);
+    }
+  }
+
+  if (missingLocation.length) {
+    lines.push("");
+    lines.push("## 확인 필요");
+    lines.push("");
+    for (const item of missingLocation) {
+      lines.push(`- 장소 미입력: ${shortDateRange(item)} ${item.title}`);
     }
   }
 
