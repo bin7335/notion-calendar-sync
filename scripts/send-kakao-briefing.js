@@ -276,9 +276,11 @@ async function getKakaoAccessToken() {
   }
 
   if (data.refresh_token) {
-    console.warn(
-      "Kakao returned a new refresh_token. Update the KAKAO_REFRESH_TOKEN GitHub secret before the old token expires."
-    );
+    console.log("새로운 카카오 리프레시 토큰이 발급되었습니다. GitHub Secrets 업데이트를 준비합니다.");
+    if (process.env.GITHUB_ENV) {
+      const { appendFile } = await import("node:fs/promises");
+      await appendFile(process.env.GITHUB_ENV, `NEW_KAKAO_REFRESH_TOKEN=${data.refresh_token}\n`, "utf-8");
+    }
   }
 
   return data.access_token;

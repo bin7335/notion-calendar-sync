@@ -29,6 +29,14 @@ jobs:
           BRIEFING_LINK_URL: ${{ vars.BRIEFING_LINK_URL }}
         run: node scripts/send-kakao-briefing.js
 
+      - name: Update Kakao Refresh Token Secret
+        if: env.NEW_KAKAO_REFRESH_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh secret set KAKAO_REFRESH_TOKEN -b"${{ env.NEW_KAKAO_REFRESH_TOKEN }}"
+          echo "GitHub Secret KAKAO_REFRESH_TOKEN 이 성공적으로 업데이트 되었습니다."
+
       - name: Commit briefing snapshot if changed
         run: |
           git config user.name "notion-calendar-sync-bot"
